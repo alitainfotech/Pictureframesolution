@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="{{ app()->getLocale() }}">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=1" name="viewport"/>
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+
+        <!-- Google Font -->
+        <link href="https://fonts.googleapis.com/css?family={{ urlencode(theme_option('primary_font', 'Poppins')) }}:200,300,400,500,600,700,800,900&display=swap" rel="stylesheet">
+
+        <style>
+            :root {
+                --color-1st: {{ theme_option('primary_color', '#FF324D') }};
+                --color-2nd: {{ theme_option('secondary_color', '#1D2224') }};
+                --primary-font: '{{ theme_option('primary_font', 'Poppins') }}', sans-serif;
+            }
+        </style>
+
+        {!! Theme::header() !!}
+
+        @if( App::isLocal() )
+          {!! Theme::asset()->container('local-header')->styles(); !!}
+        @else
+          <link media="all" type="text/css" rel="stylesheet" href="{{ asset(mix("css/bundle.css")) }}">
+        @endif
+
+    </head>
+    <body @if (BaseHelper::siteLanguageDirection() == 'rtl') dir="rtl" @endif>
+    {!! apply_filters(THEME_FRONT_BODY, null) !!}
+
+    @if (theme_option('preloader_enabled', 'no') == 'yes')
+        <!-- LOADER -->
+        <div class="preloader">
+            <div class="lds-ellipsis">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        <!-- END LOADER -->
+    @endif
+
+    <div id="alert-container"></div>
+
+    @if (is_plugin_active('newsletter') && theme_option('enable_newsletter_popup', 'yes') === 'yes')
+        <div data-session-domain="{{ config('session.domain') ?? request()->getHost() }}"></div>
+        <!-- Home Popup Section -->
+        <div class="modal fade subscribe_popup" id="newsletter-modal" data-time="{{ (int)theme_option('newsletter_show_after_seconds', 10) * 1000 }}" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true"><i class="ion-ios-close-empty"></i></span>
+                        </button>
+                        <div class="row no-gutters">
+                            <div class="col-sm-5">
+                                @if (theme_option('newsletter_image'))
+                                    <div class="background_bg h-100" data-img-src="{{ RvMedia::getImageUrl(theme_option('newsletter_image')) }}"></div>
+                                @endif
+                            </div>
+                            <div class="col-sm-7">
+                                <div class="popup_content">
+                                    <div class="popup-text">
+                                        <div class="heading_s4">
+                                            <h4>{{ __('Subscribe and Get 25% Discount!') }}</h4>
+                                        </div>
+                                        <p>{{ __('Subscribe to the newsletter to receive updates about new products.') }}</p>
+                                    </div>
+                                    <form method="post" action="{{ route('public.newsletter.subscribe') }}" class="newsletter-form">
+                                        @csrf
+                                        <div class="form-group">
+                                            <input name="email" type="email" class="form-control rounded-0" placeholder="{{ __('Enter Your Email') }}">
+                                        </div>
+
+                                        @if (setting('enable_captcha') && is_plugin_active('captcha'))
+                                            <div class="form-group">
+                                                {!! Captcha::display() !!}
+                                            </div>
+                                        @endif
+
+                                        <div class="chek-form text-left form-group">
+                                            <div class="custome-checkbox">
+                                                <input class="form-check-input" type="checkbox" name="dont_show_again" id="dont_show_again" value="">
+                                                <label class="form-check-label" for="dont_show_again"><span>{{ __("Don't show this popup again!") }}</span></label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <button class="btn btn-block text-uppercase rounded-0" type="submit" style="background: #333; color: #fff;">{{ __('Subscribe') }}</button>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <div class="newsletter-message newsletter-success-message" style="display: none"></div>
+                                            <div class="newsletter-message newsletter-error-message" style="display: none"></div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End Screen Load Popup Section -->
+    @endif
+
+    @php
+        $categoriesWith = array_merge(['slugable', 'children', 'children.slugable', 'metadata'], (is_plugin_active('language-advanced') ? ['children.translations'] : []));
+        $categories = !is_plugin_active('ecommerce') ? [] : ProductCategoryHelper::getAllProductCategories()
+            ->where('status', \Botble\Base\Enums\BaseStatusEnum::PUBLISHED)
+            ->where('type', 'framebuilder')
+            ->where('parent_id', 0)
+            ->loadMissing($categoriesWith);
+    @endphp
+
+    <!-- START HEADER -->
+    <header class="header_wrap @if (theme_option('enable_sticky_header', 'yes') == 'yes') fixed-top header_with_topbar @endif">
+        <div class="top-header d-none d-md-block">
+            <div class="container">
+                <div class="row align-items-center">
+                    @if (theme_option('hotline'))
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center justify-content-center justify-content-md-start">
+                                @if (is_plugin_active('language'))
+                                    <div class="language-wrapper">
+                                        {!! Theme::partial('language-switcher') !!}
+                                    </div>
+                                @endif
+                                @if (is_plugin_active('ecommerce'))
+                                    @php $currencies = get_all_currencies(); @endphp
+                                    @if (count($currencies) > 1)
+                                        <div class="language-wrapper choose-currency mr-3">
+                                            <div class="dropdown">
+                                                <button class="btn btn-secondary dropdown-toggle btn-select-language" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                                    {{ get_application_currency()->title }}
+                                                    <span class="language-caret"></span>
+                                                </button>
+                                                <ul class="dropdown-menu language_bar_chooser">
+                                                    @foreach ($currencies as $currency)
+                                                        <li>
+                                                            <a href="{{ route('public.change-currency', $currency->title) }}" @if (get_application_currency_id() == $currency->id) class="active" @endif><span>{{ $currency->title }}</span></a>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    @endif
+                                @endif
+                                <ul class="contact_detail text-center text-lg-left">
+                                    <li><i class="ti-mobile"></i><span>{{ theme_option('hotline') }}</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
+                    <div class="col-md-12">
+                        <div class="d-flex align-items-center justify-content-center justify-content-md-end">
+                            @if (is_plugin_active('ecommerce'))
+                                <ul class="header_list">
+                                    @if (!auth('customer')->check())
+                                        <li><a href="{{ route('customer.login') }}"><i class="ti-user"></i><span>{{ __('Login') }}</span></a></li>
+                                    @else
+                                        <li><a href="{{ route('customer.overview') }}"><i class="ti-user"></i><span>{{ auth('customer')->user()->name }}</span></a></li>
+                                        <li><a href="{{ route('customer.logout') }}"><i class="ti-lock"></i><span>{{ __('Logout') }}</span></a></li>
+                                    @endif
+                                </ul>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="middle-header dark_skin">
+            <div class="container">
+                <div class="nav_block">
+                    <a class="navbar-brand" href="{{ url('/') }}">
+                        <img class="logo_dark" src="{{ RvMedia::getImageUrl(theme_option('logo')) }}" alt="{{ theme_option('site_title') }}" />
+                    </a>
+                    @if (theme_option('hotline'))
+                        <div class="contact_phone order-md-last">
+                            <i class="linearicons-phone-wave"></i>
+                            <span>{{ theme_option('hotline') }}</span>
+                        </div>
+                    @endif
+                    @if (is_plugin_active('ecommerce'))
+                        <div class="product_search_form">
+                            <form action="{{ route('public.products') }}" method="GET">
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <div class="custom_select">
+                                            <select name="categories[]" class="first_null">
+                                                <option value="">{{ __('All') }}</option>
+                                                @foreach (ProductCategoryHelper::getProductCategoriesWithIndent() as $category)
+                                                  @if($category->type != "framebuilder")
+                                                    <option value="{{ $category->id }}" @if (in_array($category->id, request()->input('categories', []))) selected @endif>{!! $category->indent_text !!} {{ $category->name }}</option>
+                                                  @endif
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <input class="form-control" name="q" value="{{ request()->input('q') }}" placeholder="{{ __('Search Product') }}..." required  type="text">
+                                    <button type="submit" class="search_btn"><i class="linearicons-magnifier"></i></button>
+                                </div>
+                            </form>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        <div class="bottom_header light_skin main_menu_uppercase bg_dark @if (url()->current() === route('public.single')) mb-4 @endif">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <nav class="navbar navbar-expand-lg">
+                            <button class="navbar-toggler side_navbar_toggler" type="button" data-toggle="collapse" data-target="#navbarSidetoggle" aria-expanded="false">
+                                <span class="ion-android-menu"></span>
+                            </button>
+                            <div class="collapse navbar-collapse mobile_side_menu" id="navbarSidetoggle">
+                                {!! Menu::renderMenuLocation('main-menu', ['view' => 'menu', 'options' => ['class' => 'navbar-nav']]) !!}
+                            </div>
+                            @if (is_plugin_active('ecommerce'))
+                                <ul class="navbar-nav attr-nav align-items-center">
+                                    <li><a href="@if (!auth('customer')->check()) {{ route('customer.overview') }} @else {{ route('customer.login') }} @endif" class="nav-link"><i class="linearicons-user"></i></a></li>
+                                    <li><a href="{{ route('public.wishlist') }}" class="nav-link btn-wishlist"><i class="linearicons-heart"></i><span class="wishlist_count">{{ !auth('customer')->check() ? Cart::instance('wishlist')->count() : auth('customer')->user()->wishlist()->count() }}</span></a></li>
+                                    @if (EcommerceHelper::isCartEnabled())
+                                        <li class="dropdown cart_dropdown"><a class="nav-link cart_trigger btn-shopping-cart" href="#" data-toggle="dropdown"><i class="linearicons-cart"></i><span class="cart_count">{{ Cart::instance('cart')->count() }}</span></a>
+                                            <div class="cart_box dropdown-menu dropdown-menu-right">
+                                                {!! Theme::partial('cart') !!}
+                                            </div>
+                                        </li>
+                                    @endif
+                                </ul>
+                            @endif
+                            <div class="pr_search_icon">
+                                <a href="javascript:void(0);" class="nav-link pr_search_trigger"><i class="linearicons-magnifier"></i></a>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- END HEADER -->
